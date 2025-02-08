@@ -9,8 +9,9 @@ def conectar_banco():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="12345",  # Insira sua senha do MySQL
+        password="",  # Insira sua senha do MySQL
         database="estacionamento"
+        port=3306  # Adicione a porta, caso seja necessário
     )
 
 # Função para login
