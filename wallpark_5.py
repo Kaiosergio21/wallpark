@@ -3,16 +3,23 @@ from tkinter import messagebox
 from datetime import datetime
 import mysql.connector
 import os
+import re  # Importação para usar expressões regulares
 
 # Configuração do banco de dados
 def conectar_banco():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="",  # Insira sua senha do MySQL
+        password="12345",  # Insira sua senha do MySQL
         database="estacionamento"
-        port=3306  # Adicione a porta, caso seja necessário
     )
+
+# Função para validar placa
+def validar_placa(placa):
+    # Expressão regular para verificar o formato da placa Mercosul
+    regex = r'^[A-Z]{3}\d[A-Z]\d{2}$'
+
+    return bool(re.match(regex, placa))
 
 # Função para login
 def verificar_login():
@@ -38,6 +45,11 @@ def registrar_entrada(entry_placa, entry_modelo, entry_cor, entry_tipo_veiculo):
     modelo = entry_modelo.get()
     cor = entry_cor.get()
     tipo = entry_tipo_veiculo.get().strip().lower()
+
+    # Valida a placa
+    if not validar_placa(placa):
+        messagebox.showerror("Erro", "Placa inválida. A placa deve seguir o formato: ABC1D23")
+        return
 
     if not placa or not modelo or not cor or tipo not in ["pequeno", "grande"]:
         messagebox.showerror("Erro", "Preencha todos os campos corretamente!")
@@ -65,8 +77,15 @@ def registrar_entrada(entry_placa, entry_modelo, entry_cor, entry_tipo_veiculo):
     atualizar_lista_veiculos()
 
 # Função para registrar saída e calcular pagamento
-def registrar_saida(entry_placa, var_pagamento):
-    placa = entry_placa.get()
+def registrar_saida(var_pagamento):
+    selecionado = listbox_veiculos.curselection()  # Obtém a seleção
+    if not selecionado:
+        messagebox.showerror("Erro", "Nenhum veículo selecionado!")
+        return
+
+    # Pegamos o texto do item selecionado na lista
+    placa = listbox_veiculos.get(selecionado[0]).split(" | ")[0]  # Pegamos apenas a placa
+
     pagamento = var_pagamento.get()
     
     conexao = conectar_banco()
@@ -80,8 +99,8 @@ def registrar_saida(entry_placa, var_pagamento):
         conexao.close()
         return
 
-    tipo_veiculo = entrada_info[4]  # Alterado para refletir a posição correta da coluna "tipo"
-    hora_entrada = entrada_info[5]  # A posição da coluna "entrada" é 5 (ajuste conforme seu banco de dados)
+    tipo_veiculo = entrada_info[4]  # Ajuste conforme sua tabela (posição do tipo)
+    hora_entrada = entrada_info[5]  # Posição da entrada
     
     hora_saida = datetime.now()
     tempo_estacionado = (hora_saida - hora_entrada).total_seconds() / 3600  # Calcular tempo estacionado em horas
@@ -108,7 +127,7 @@ def registrar_saida(entry_placa, var_pagamento):
 
     messagebox.showinfo("Pagamento Concluído", f"Placa: {placa}\nValor: R$ {valor:.2f}\nPagamento: {pagamento}")
 
-    atualizar_lista_veiculos()
+    atualizar_lista_veiculos()  # Atualiza a lista de veículos exibidos
 
 # Função para atualizar lista de veículos na tela
 def atualizar_lista_veiculos():
@@ -226,30 +245,29 @@ def abrir_menu():
     var_pagamento = tk.StringVar(value="À vista")
     tk.OptionMenu(menu_window, var_pagamento, "À vista", "Cartão de Débito", "Mensal").grid(row=5, column=1)
 
-    tk.Button(menu_window, text="Registrar Saída e Pagamento", command=lambda: registrar_saida(entry_placa, var_pagamento)).grid(row=6, column=0, columnspan=2)
+    tk.Button(menu_window, text="Registrar Saída e Pagamento", command=lambda: registrar_saida(var_pagamento)).grid(row=6, column=0, columnspan=2)
 
-    tk.Label(menu_window, text="Lista de Veículos:").grid(row=7, column=0)
-    listbox_veiculos = tk.Listbox(menu_window, width=60)
-    listbox_veiculos.grid(row=7, column=1)
+    tk.Button(menu_window, text="Ver Histórico de Notificações", command=exibir_historico_notificacoes).grid(row=7, column=0, columnspan=2)
+
+    listbox_veiculos = tk.Listbox(menu_window, width=80, height=20, selectmode=tk.EXTENDED)
+    listbox_veiculos.grid(row=8, column=0, columnspan=2)
 
     atualizar_lista_veiculos()
 
-    tk.Button(menu_window, text="Ver Histórico de Notificações", command=exibir_historico_notificacoes).grid(row=8, column=0, columnspan=2)
-
     menu_window.mainloop()
 
-# Interface de login
+# Tela de login
 root = tk.Tk()
-root.title("Login - Sistema de Estacionamento")
+root.title("Login")
 
-tk.Label(root, text="Usuário:").pack()
+tk.Label(root, text="Usuário:").grid(row=0, column=0)
 entry_usuario = tk.Entry(root)
-entry_usuario.pack()
+entry_usuario.grid(row=0, column=1)
 
-tk.Label(root, text="Senha:").pack()
+tk.Label(root, text="Senha:").grid(row=1, column=0)
 entry_senha = tk.Entry(root, show="*")
-entry_senha.pack()
+entry_senha.grid(row=1, column=1)
 
-tk.Button(root, text="Login", command=verificar_login).pack(pady=5)
+tk.Button(root, text="Login", command=verificar_login).grid(row=2, column=0, columnspan=2)
 
 root.mainloop()
